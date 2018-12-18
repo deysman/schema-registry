@@ -71,7 +71,28 @@ public class AvroCompatibilityTest {
       + " {\"type\":\"string\",\"name\":\"f2\", \"default\": \"foo\"}]},"
       + " {\"type\":\"string\",\"name\":\"f3\", \"default\": \"bar\"}]}";
   private final Schema schema8 = AvroUtils.parseSchema(schemaString8).schemaObj;
-  
+
+  private final String schemaString9 = "{\"type\":\"record\","
+      + "\"name\":\"myrecord\","
+      + "\"fields\":"
+      + "[{\"type\":\"string\",\"name\":\"f1_new_new\", \"aliases\": [\"f1_new\"]}]}";
+  private final Schema schema9 = AvroUtils.parseSchema(schemaString9).schemaObj;
+
+  private final String schemaString10 = "{\"type\":\"record\","
+      + "\"name\":\"myrecord\","
+      + "\"fields\":"
+      + "[{\"name\":\"myenum\",\"type\":"
+      + "{ \"type\": \"enum\", \"name\": \"e\", \"symbols\": [\"s1\"]}}]}";
+  private final Schema schema10 = AvroUtils.parseSchema(schemaString10).schemaObj;
+
+  private final String schemaString11 = "{\"type\":\"record\","
+      + "\"name\":\"myrecord\","
+      + "\"fields\":"
+      + "[{\"name\":\"myenum\",\"type\":"
+      + "{ \"type\": \"enum\", \"name\": \"e\", \"symbols\": [\"s1\", \"s2\"]}}]}";
+  private final Schema schema11 = AvroUtils.parseSchema(schemaString11).schemaObj;
+
+
   /*
    * Backward compatibility: A new schema is backward compatible if it can be used to read the data
    * written in the previous schema.
@@ -83,7 +104,7 @@ public class AvroCompatibilityTest {
                checker.isCompatible(schema2, Collections.singletonList(schema1)));
     assertFalse("adding a field w/o default is not a backward compatible change",
                 checker.isCompatible(schema3, Collections.singletonList(schema1)));
-    assertFalse("changing field name is not a backward compatible change",
+    assertTrue("changing field name with an alias is a backward compatible change",
                 checker.isCompatible(schema4, Collections.singletonList(schema1)));
     assertTrue("evolving a field type to a union is a backward compatible change",
                checker.isCompatible(schema6, Collections.singletonList(schema1)));
@@ -93,7 +114,11 @@ public class AvroCompatibilityTest {
                checker.isCompatible(schema7, Collections.singletonList(schema6)));
     assertFalse("removing a type from a union is not a backward compatible change",
                 checker.isCompatible(schema6, Collections.singletonList(schema7)));
-    
+    assertTrue("adding an enum symbol is a backward compatible change",
+        checker.isCompatible(schema11, Arrays.asList(schema10)));
+    assertFalse("removing an enum symbol is not a backward compatible change",
+        checker.isCompatible(schema10, Arrays.asList(schema11)));
+
     // Only schema 2 is checked
     assertTrue("removing a default is not a transitively compatible change",
         checker.isCompatible(schema3, Arrays.asList(schema1, schema2)));
@@ -117,6 +142,8 @@ public class AvroCompatibilityTest {
         checker.isCompatible(schema3, Arrays.asList(schema2)));
     assertFalse("removing a default is not a transitively compatible change",
         checker.isCompatible(schema3, Arrays.asList(schema2, schema1)));
+    assertFalse("changing a field name multiple times is a compatible change, but not transitively ",
+        checker.isCompatible(schema9, Arrays.asList(schema4, schema1)));
   }
   
   /*
@@ -134,6 +161,10 @@ public class AvroCompatibilityTest {
         checker.isCompatible(schema3, Collections.singletonList(schema2)));
     assertTrue("adding a field is a forward compatible change",
         checker.isCompatible(schema2, Collections.singletonList(schema3)));
+    assertFalse("adding an enum symbol is not a forward compatible change",
+        checker.isCompatible(schema11, Arrays.asList(schema10)));
+    assertTrue("removing an enum symbol is a forward compatible change",
+        checker.isCompatible(schema10, Arrays.asList(schema11)));
     
     // Only schema 2 is checked
     assertTrue("removing a default is not a transitively compatible change",
@@ -158,6 +189,9 @@ public class AvroCompatibilityTest {
         checker.isCompatible(schema1, Arrays.asList(schema2)));
     assertFalse("removing a default is not a transitively compatible change",
         checker.isCompatible(schema1, Arrays.asList(schema2, schema3)));
+
+    assertFalse("adding an enum symbol is not a compatible change",
+        checker.isCompatible(schema11, Arrays.asList(schema10)));
   }
   
   /*
